@@ -733,7 +733,7 @@ class Match implements Taskable {
                     } elseif ($this->mapIsEngaged && (!$this->streamerReady || $this->config_streamer)) {
                         $messages [] = "Streamers are not ready yet!";
                     } else {
-                        $messages [] = "Please write " . $this->formatText("!map mapname", "yellow") . "to select the map!";
+                        $messages [] = "Please write " . $this->formatText("!map mapname", "yellow") . " to select the map!";
                         $maps = \eBot\Config\Config::getInstance()->getMaps();
                         foreach ($maps as $map) {
                             $mapmessage .= "$map, ";
