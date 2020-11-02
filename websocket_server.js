@@ -21,7 +21,7 @@ function requestHandler (request, response) {
 
         case '/upload':
             var form = new formidable.IncomingForm({uploadDir: DEMO_PATH});
-
+            form.maxFileSize = 1024 * 1024 * 1024;
             form.parse(request, function(err, fields, files) {
                 if (files.file) {
                     if (files.file.name.endsWith(".dem")) {
