@@ -96,53 +96,53 @@ function requestHandler (request, response) {
 function requestHandlerSecureUpload (request, response) {
     switch (request.url) {
         
-		case '/upload':
-			var requestIP = request.connection.remoteAddress;
-			var ipRange = ["10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"];
-			var ipAllowed = ipRangeCheck(requestIP, ipRange);
-			if (ipAllowed) {
-				var form = new formidable.IncomingForm({uploadDir: DEMO_PATH});
-				form.maxFileSize = 1024 * 1024 * 1024;
-				form.parse(request, function(err, fields, files) {
-					if (files.file) {
-						if (files.file.name.endsWith(".dem")) {
-							if (files.file.type == "application/octet-stream") {
-								console.log("Recieved file " + files.file.name + " from " + requestIP);
+	case '/upload':
+		var requestIP = request.connection.remoteAddress;
+		var ipRange = ["10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"];
+		var ipAllowed = ipRangeCheck(requestIP, ipRange);
+		if (ipAllowed) {
+			var form = new formidable.IncomingForm({uploadDir: DEMO_PATH});
+			form.maxFileSize = 1024 * 1024 * 1024;
+			form.parse(request, function(err, fields, files) {
+				if (files.file) {
+					if (files.file.name.endsWith(".dem")) {
+						if (files.file.type == "application/octet-stream") {
+							console.log("Recieved file " + files.file.name + " from " + requestIP);
 
-								if (fs.existsSync(DEMO_PATH + files.file.name + ".zip"))
-									fs.unlinkSync(DEMO_PATH + files.file.name + ".zip");
-								if (fs.existsSync(files.file.path))
-									fs.renameSync(files.file.path, DEMO_PATH + files.file.name);
+							if (fs.existsSync(DEMO_PATH + files.file.name + ".zip"))
+								fs.unlinkSync(DEMO_PATH + files.file.name + ".zip");
+							if (fs.existsSync(files.file.path))
+								fs.renameSync(files.file.path, DEMO_PATH + files.file.name);
 
-								var output = fs.createWriteStream(DEMO_PATH + files.file.name + ".zip");
-								var archive = archiver('zip');
-								archive.pipe(output);
+							var output = fs.createWriteStream(DEMO_PATH + files.file.name + ".zip");
+							var archive = archiver('zip');
+							archive.pipe(output);
 
-								var demo = DEMO_PATH + files.file.name;
-								archive.append(fs.createReadStream(demo), {name: files.file.name});
-								archive.finalize();
+							var demo = DEMO_PATH + files.file.name;
+							archive.append(fs.createReadStream(demo), {name: files.file.name});
+							archive.finalize();
 
-								if (fs.existsSync(DEMO_PATH + files.file.name) && fs.existsSync(DEMO_PATH + files.file.name + ".zip"))
-									fs.unlinkSync(DEMO_PATH + files.file.name);
-							}
-						} else {
-							console.error("Bad file uploaded from " + requestIP);
+							if (fs.existsSync(DEMO_PATH + files.file.name) && fs.existsSync(DEMO_PATH + files.file.name + ".zip"))
+								fs.unlinkSync(DEMO_PATH + files.file.name);
 						}
 					} else {
-					console.error("Bad input type from " + requestIP);
+						console.error("Bad file uploaded from " + requestIP);
 					}
-					response.writeHead(200, {'content-type': 'text/plain'});
-					response.end();
-				});
-			} else {
-			console.error("Unauthorized IP address (" + requestIP + ")");
-			response.writeHead(200, {'content-type': 'text/plain'});
-			response.write("Access Denied");
-            response.end();
-			}
-			break;
+				} else {
+				console.error("Bad input type from " + requestIP);
+				}
+				response.writeHead(200, {'content-type': 'text/plain'});
+				response.end();
+			});
+		} else {
+		console.error("Unauthorized IP address (" + requestIP + ")");
+		response.writeHead(200, {'content-type': 'text/plain'});
+		response.write("Access Denied");
+		response.end();
+		}
+		break;
 			
-		default:
+	default:
             if (request.method == 'POST') {
                 var body = '';
                 request.on('data', function(data) {
@@ -188,7 +188,7 @@ if (secureUpload) {
 			cert: fs.readFileSync(process.argv[5] ||'ssl/cert.pem')
 		},requestHandlerSecureUpload);
 	} else {
-		server = http.createServer(requestHandlerSecureUpload);
+	server = http.createServer(requestHandlerSecureUpload);
 	} 
 } else {
 	if (sslEnabled) {
