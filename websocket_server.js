@@ -5,10 +5,12 @@ var archiver = require('archiver');
 var fs = require('fs');
 var dgram = require('dgram');
 var clientUDP = dgram.createSocket("udp4");
+var ipRangeCheck = require("ip-range-check");
 
 var udp_ip = process.argv[2];
 var udp_port = process.argv[3];
 var sslEnabled = process.argv[4] === 'TRUE';
+var secureUpload = process.argv[7];
 
 var DEMO_PATH = __dirname + "/demos/";
 
@@ -19,10 +21,10 @@ String.prototype.endsWith = function(suffix) {
 function requestHandler (request, response) {
     switch (request.url) {
 
-        case '/upload':
-            var form = new formidable.IncomingForm({uploadDir: DEMO_PATH});
-            form.maxFileSize = 1024 * 1024 * 1024;
-            form.parse(request, function(err, fields, files) {
+		case '/upload':
+			var form = new formidable.IncomingForm({uploadDir: DEMO_PATH});
+			form.maxFileSize = 1024 * 1024 * 1024;
+			form.parse(request, function(err, fields, files) {
                 if (files.file) {
                     if (files.file.name.endsWith(".dem")) {
                         if (files.file.type == "application/octet-stream") {
@@ -90,14 +92,78 @@ function requestHandler (request, response) {
             break;
     }
 }
+
+function requestHandlerSecureUpload (request, response) {
+    switch (request.url) {
+        
+		case '/upload':
+			var requestIP = request.connection.remoteAddress;
+			var ipRange = ["10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"];
+			var ipAllowed = ipRangeCheck(requestIP, ipRange);
+			if (ipAllowed) {
+				var form = new formidable.IncomingForm({uploadDir: DEMO_PATH});
+				form.maxFileSize = 1024 * 1024 * 1024;
+				form.parse(request, function(err, fields, files) {
+					if (files.file) {
+						if (files.file.name.endsWith(".dem")) {
+							if (files.file.type == "application/octet-stream") {
+								console.log("Recieved file " + files.file.name + " from " + requestIP);
+
+								if (fs.existsSync(DEMO_PATH + files.file.name + ".zip"))
+									fs.unlinkSync(DEMO_PATH + files.file.name + ".zip");
+								if (fs.existsSync(files.file.path))
+									fs.renameSync(files.file.path, DEMO_PATH + files.file.name);
+
+								var output = fs.createWriteStream(DEMO_PATH + files.file.name + ".zip");
+								var archive = archiver('zip');
+								archive.pipe(output);
+
+								var demo = DEMO_PATH + files.file.name;
+								archive.append(fs.createReadStream(demo), {name: files.file.name});
+								archive.finalize();
+
+								if (fs.existsSync(DEMO_PATH + files.file.name) && fs.existsSync(DEMO_PATH + files.file.name + ".zip"))
+									fs.unlinkSync(DEMO_PATH + files.file.name);
+							}
+						} else {
+							console.error("Bad file uploaded from " + requestIP);
+						}
+					} else {
+					console.error("Bad input type from " + requestIP);
+					}
+					response.writeHead(200, {'content-type': 'text/plain'});
+					response.end();
+				});
+			} else {
+			console.error("Unauthorized IP address (" + requestIP + ")");
+			response.writeHead(200, {'content-type': 'text/plain'});
+			response.write("Access Denied");
+            response.end();
+			}
+
+            break;
+    }
+}
+
 var server;
-if (sslEnabled) {
-	server = https.createServer({
-		key: fs.readFileSync(process.argv[6] || 'ssl/key.pem'),
-		cert: fs.readFileSync(process.argv[5] ||'ssl/cert.pem')
-	},requestHandler);
+if (secureUpload) {
+	if (sslEnabled) {
+		server = https.createServer({
+			key: fs.readFileSync(process.argv[6] || 'ssl/key.pem'),
+			cert: fs.readFileSync(process.argv[5] ||'ssl/cert.pem')
+		},requestHandlerSecureUpload);
+	} else {
+		server = http.createServer(requestHandlerSecureUpload);
+	} 
 } else {
-	server = http.createServer(requestHandler);
+	if (sslEnabled) {
+		server = https.createServer({
+			key: fs.readFileSync(process.argv[6] || 'ssl/key.pem'),
+			cert: fs.readFileSync(process.argv[5] ||'ssl/cert.pem')
+		},requestHandler);
+	} else {
+		server = http.createServer(requestHandler);
+	}
 }
 
 fs.exists(DEMO_PATH, function(exists) {
