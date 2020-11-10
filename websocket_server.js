@@ -21,10 +21,10 @@ String.prototype.endsWith = function(suffix) {
 function requestHandler (request, response) {
     switch (request.url) {
 
-		case '/upload':
-			var form = new formidable.IncomingForm({uploadDir: DEMO_PATH});
-			form.maxFileSize = 1024 * 1024 * 1024;
-			form.parse(request, function(err, fields, files) {
+        case '/upload':
+            var form = new formidable.IncomingForm({uploadDir: DEMO_PATH});
+            form.maxFileSize = 1024 * 1024 * 1024;
+            form.parse(request, function(err, fields, files) {
                 if (files.file) {
                     if (files.file.name.endsWith(".dem")) {
                         if (files.file.type == "application/octet-stream") {
@@ -140,7 +140,42 @@ function requestHandlerSecureUpload (request, response) {
 			response.write("Access Denied");
             response.end();
 			}
+			break;
+			
+		default:
+            if (request.method == 'POST') {
+                var body = '';
+                request.on('data', function(data) {
+                    body += data;
+                });
+                request.on('end', function() {
+                    var data = {};
+                    try {
+                        data = JSON.parse(body);
+                        if (data.message === "ping") {
+                            return;
+                        }
+                    } catch (e) {
+                    }
+                    if (request.url == "/alive") {
+                        io.sockets.in('alive').emit('aliveHandler', {data: body});
+                    } else if (request.url == "/rcon") {
+                        io.sockets.in('rcon-' + data.id).emit('rconHandler', body);
+                    } else if (request.url == "/logger") {
+                        io.sockets.in('logger-' + data.id).emit('loggerHandler', body);
+                        io.sockets.in('loggersGlobal').emit('loggerGlobalHandler', body);
+                    } else if (request.url == "/match") {
+                        io.sockets.in('matchs').emit('matchsHandler', body);
+                    } else if (request.url == "livemap") {
+                        io.sockets.in('livemap-' + data.id).emit('livemapHandler', body);
+                    } else {
+                        message = JSON.parse(body);
+                    }
+                });
+            }
 
+            response.writeHead(404);
+            response.end();
             break;
     }
 }
