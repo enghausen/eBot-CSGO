@@ -13,6 +13,14 @@ var sslEnabled = process.argv[4] === 'TRUE';
 var secureUpload = process.argv[7];
 
 var DEMO_PATH = __dirname + "/demos/";
+var ipPrivateRange1 = "10.0.0.0/8";
+var ipPrivateRange2 = "172.16.0.0/12";
+var ipPrivateRange3 = "192.168.0.0/16";
+var ipPublicRange = "8.8.8.8/32";
+var ipCustomRange1 = "8.8.8.8/32";
+var ipCustomRange2 = "8.8.8.8/32";
+var ipCustomRange3 = "8.8.8.8/32";
+
 
 String.prototype.endsWith = function(suffix) {
     return this.indexOf(suffix, this.length - suffix.length) !== -1;
@@ -98,7 +106,7 @@ function requestHandlerSecureUpload (request, response) {
         
         case '/upload':
 	    var requestIP = request.connection.remoteAddress;
-	    var ipRange = ["10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"];
+	    var ipRange = [ipPrivateRange1, ipPrivateRange2, ipPrivateRange3, ipPublicRange, ipCustomRange1, ipCustomRange2, ipCustomRange3];
 	    var ipAllowed = ipRangeCheck(requestIP, ipRange);
                 if (ipAllowed) {
                     var form = new formidable.IncomingForm({uploadDir: DEMO_PATH});
